@@ -1,0 +1,61 @@
+<!doctype html>
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="#">
+    <style>
+        .slider {
+            width: 30%;
+            margin-left: 5%;
+        }
+    </style>
+    <title>car4</title>
+    <script src="car4src.js" defer></script>
+</head>
+
+<body>
+    <h1>Carrera</h1>
+    <h2>Eingabe</h2>
+
+    <FORM name="myform" action="/" method="post">
+        <P>
+            Speed <br>
+            <INPUT type="range" name="S1" id="S1" oninput="onin(1)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O1" id="O1"> S1 </output>
+            <INPUT type="range" name="S2" id="S2" oninput="onin(2)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O2" id="O2"> S2 </output> <br>
+            <br>
+            <INPUT type="range" name="S3" id="S3" oninput="onin(3)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O3" id="O3"> S3 </output>
+            <INPUT type="range" name="S4" id="S4" oninput="onin(4)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O4" id="O4"> S4 </output> <br>
+            <INPUT type="range" name="S5" id="S5" oninput="onin(5)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O5" id="O5"> S5 </output>
+            <INPUT type="range" name="S6" id="S6" oninput="onin(6)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O6" id="O6"> S6 </output> <br>
+            <INPUT type="range" name="S7" id="S7" oninput="onin(7)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O7" id="O7"> S7 </output>
+            <INPUT type="range" name="S8" id="S8" oninput="onin(8)" min="0" max="255" step="10" value="77"
+                class="slider">
+            <output name="O8" id="O8"> S8 </output> <br>
+            <input type="button" value="Stop" id="Stop" onclick="ocstop()">
+            <input type="button" value="Start" id="Start" onclick="ocstart()">
+            <input type="button" value="Update" id="Update" onclick="ocupdate()">
+            <input type="button" value="Clear" id="Clear" onclick="occlear()">
+            <INPUT type="submit"> <INPUT type="reset">
+        </P>
+    </FORM>
+
+    <h2>Grafik</h2>
+    <canvas id="myCanvas" width="200" height="100" style="border:medium solid gray;">
+        Your browser does not support the HTML5 canvas tag.</canvas>
+</body>
+
+</html>
