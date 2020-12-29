@@ -1,5 +1,18 @@
 // const myWorker = new Worker("mww1w.js");
 
+onmessage = function (e) {
+    console.log('Worker: Message received from main script');
+    postMessage("Worker: Message received from main script");
+}
+
+var postcount = 0;
+
+function intPost() {
+    postcount += 1;
+    postMessage("intPost: "+ postcount.toString());
+}
+
+const myposter= setInterval(intPost, 3000)
 
 function mandel2(c_r, c_i, z0_r, z0_i, max_iter) {
     let x0 = c_r;
@@ -54,17 +67,6 @@ function draw() {
             }
         }
     }
-    ctx.putImageData(imagedata, 0, 0);
-
-    drawfps = (1 * drawfps + 1000 / (datenow - datelast)) / 2;
-    ctx.font = "30px Courier New";
-    ctx.fillStyle = "black";
-    ctx.strokeStyle= "white";
-    ctx.strokeText(drawcount.toString() + ' FPS=' + (Math.round(drawfps)).toString(), 10, 50);
-    ctx.fillText(drawcount.toString() + ' FPS=' + (Math.round(drawfps)).toString(), 10, 50);
-    ctx.strokeText(pointer.id.toString() + " " + pointer.type.toString() + " " + pointer.prim.toString(), 10, 100);
-    ctx.fillText(pointer.id.toString() + " " + pointer.type.toString() + " " + pointer.prim.toString(), 10, 100);
-    ctx.restore();
     datelast = datenow;
 }
 
