@@ -4,7 +4,6 @@ var drawcount = 0;
 var datelast = 0;
 var drawfps = 0;
 
-const myWorker = new Worker("mww1w.js");
 
 var pointer = {
     x: innerWidth / 2,
@@ -23,6 +22,13 @@ function movehandler(e) {
     pointer.prim = e.isPrimary;
     // console.log(pointer);
 }
+
+const myWorker = new Worker("mww1w.js");
+
+myWorker.onmessage = function (e) {
+        console.log('Message received from worker', e);
+}
+
 
 
 window.onload = function myfunction() {
@@ -55,13 +61,13 @@ function draw() {
     let imagedata = ctx.createImageData(innerWidth, innerHeight);
     //    ctx.fillStyle = "rgba(200, 75, 99, 0.384)";
     //    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     ctx.putImageData(imagedata, 0, 0);
 
     drawfps = (1 * drawfps + 1000 / (datenow - datelast)) / 2;
     ctx.font = "30px Courier New";
     ctx.fillStyle = "black";
-    ctx.strokeStyle= "white";
+    ctx.strokeStyle = "white";
     ctx.strokeText(drawcount.toString() + ' FPS=' + (Math.round(drawfps)).toString(), 10, 50);
     ctx.fillText(drawcount.toString() + ' FPS=' + (Math.round(drawfps)).toString(), 10, 50);
     ctx.strokeText(pointer.id.toString() + " " + pointer.type.toString() + " " + pointer.prim.toString(), 10, 100);
