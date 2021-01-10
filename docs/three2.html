@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My first three.js app</title>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="node_modules/three/build/three.js"></script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+        precision mediump float;
+        precision mediump int;
+        uniform mat4 modelViewMatrix; // optional
+        uniform mat4 projectionMatrix; // optional
+        attribute vec3 position;
+        attribute vec4 color;
+        varying vec3 vPosition;
+        varying vec4 vColor;
+        varying vec2 vCplx;
+        void main()	{
+            vPosition = position;
+            vColor = color;
+            vCplx = position.xy;
+            // gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+            gl_Position = vec4( position, 1.0 );
+
+        }
+
+    </script>
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        precision mediump float;
+        precision mediump int;
+        uniform float time;
+        varying vec3 vPosition;
+        varying vec4 vColor;
+        varying vec2 vCplx;
+
+        float mandel2 (float re, float im) {
+            float x = 0.0;
+            float y = 0.0;
+            int max_iter = 750;
+            int remain_iter = max_iter;
+            float xx = x*x;
+            float yy = y*y;
+            float xy = x*y;
+            float betrag_2 = xx + yy;
+            float max_betrag_2 = 4.0;
+
+            for (int i = 0; i<750; i++ ) {
+                if (betrag_2 > max_betrag_2) {
+                    return (float(i)-log(log(betrag_2) / log(4.0)) / log(2.0));
+                };
+                x  = xx - yy + re;
+                y  = xy + xy + im;
+                xx = x*x;
+                yy = y*y;
+                xy = x*y;
+                betrag_2 = xx + yy;
+            };
+                
+            // Julia = max_iter - remain_iter;
+            // Julia = max_iter - remain_iter – log(log(betrag_2) / log(4)) / log(2)
+            return 0.0;
+        }
+
+        void main()	{
+            vec4 color = vec4( vColor );
+            float mand2;
+            if (abs(vPosition.y) <= -0.1) {
+                color = vec4 (1.0, 0.0, 0.0, 1.0);
+            };
+            if (abs(vPosition.x) <= -0.1) {
+                color = vec4 (0.0,1.0,0.0,1.0);
+            };
+            if (abs(vPosition.x) <= 0.9 && abs(vPosition.y) <= 0.9) {
+                mand2=mandel2(0.01*vPosition.x-0.75, 0.01*vPosition.y+0.015);
+                color = vec4 (0.0,0.0,0.0,1.0);
+                if (mand2 < 250.0) { color.r = mand2/256.0 ; }
+                else if (mand2 < 500.0) { color.g = (mand2-250.0) /256.0 ; }
+                else if (mand2 < 750.0) { color.b = (mand2-500.0) /256.0 ; }
+                else { color = vec4 (0.0,0.0,0.0,1.0) ; };
+                // color.b = abs(vPosition.x * 23.0) - float(int(abs(vPosition.x*23.0)));
+            };
+            gl_FragColor = color;
+        }
+
+    </script>
+    <script src="three2.js" defer></script>
+
+</body>
+
+</html>

@@ -1,0 +1,378 @@
+<!-- Licensed under a BSD license. See license.html for license -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>WebGL2 - 2D</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=1" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+</head>
+<style>
+    #canvas {
+        position: fixed;
+        z-index: -1;
+        touch-action: none;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: rgba(200, 75, 99, 0.384);
+    }
+</style>
+
+<body>
+    <canvas id="canvas"></canvas>
+</body>
+<!--
+See https://webgl2fundamentals.org/webgl/lessons/webgl-boilerplate.html
+and https://webgl2fundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+-->
+<script src="webgl-utils.js"></script>
+<script>
+    "use strict";
+
+    var vertexShaderSource = `#version 300 es
+
+precision highp float;
+// an attribute is an input (in) to a vertex shader.
+// It will receive data from a buffer
+in vec2 a_position; // pixel, z.B. 0 .. 500
+out vec2 v_position; // re/im, ca. -4 .. +4
+
+uniform vec4 u_color;
+uniform vec2 u_resolution;
+uniform vec2 u_center;
+uniform vec2 u_skalierung;
+uniform int u_max_iter;
+
+
+// all shaders have a main function
+void main() {
+
+  // convert the position from pixels to 0.0 to 1.0
+  vec2 zeroToOne = a_position / u_resolution;
+  v_position= a_position;
+
+  // convert from 0->1 to 0->2
+  vec2 zeroToTwo = zeroToOne * 2.0;
+
+  // convert from 0->2 to -1->+1 (clipspace)
+  vec2 clipSpace = zeroToTwo - 1.0;
+  v_position= vec2( u_skalierung.x*clipSpace.x+u_center.x, 
+                    u_skalierung.y*clipSpace.y+u_center.y); 
+
+  gl_Position = vec4(clipSpace.x, clipSpace.y, 0, 1);
+}
+`;
+    var fragmentShaderSource2 = `#version 300 es
+precision highp float;
+precision highp int;
+
+uniform vec4 u_color;
+uniform vec2 u_resolution;
+uniform vec2 u_center;
+uniform vec2 u_skalierung;
+uniform int u_max_iter;
+
+
+in vec2 v_position;
+out vec4 outColor; 
+
+
+float mandel2 (float re, float im) {
+    float x = 0.0;
+    float y = 0.0;
+    float xold = 0.0;
+    float yold = 0.0;
+    int period;
+    float xx = x*x;
+    float yy = y*y;
+    float xy = x*y;
+    float betrag_2 = xx + yy;
+    float max_betrag_2 = 4.0;
+    for (int i = 0; i<u_max_iter; i++ ) {
+        if (betrag_2 > max_betrag_2) {
+            return (float(i)-log(log(betrag_2) / log(4.0)) / log(2.0));
+        };
+        x  = xx - yy + re;
+        y  = xy + xy + im;
+        xx = x*x;
+        yy = y*y;
+        xy = x*y;
+        betrag_2 = xx + yy;
+        if ((abs(x - xold) + abs(y - yold)) < 0.000001) {
+            return -2.0;
+        };
+        period += 1;
+        if (period > 20) {
+            period = 0;
+            xold = x;
+            yold = y;
+        };
+    };
+    return -1.0;
+}
+
+vec4 rad2rgb(float grad) {
+    float ngrad = grad;
+    vec4 color = vec4 (0.0,0.0,0.0,1.0);
+    for (ngrad = grad; ngrad > 360.0; ngrad -= 360.0 ) { };
+    if (ngrad <= 60.0) {
+        color.r = 1.0; color.b = 0.0; color.g = ngrad/ 60.0;
+        return color;
+    };
+    if (ngrad <= 120.0) {
+        color.g = 1.0; color.b = 0.0; color.r = (120.0-ngrad)/ 60.0;
+        return color;
+    };
+    if (ngrad <= 180.0) {
+        color.r = 0.0; color.g = 1.0; color.b = (ngrad- 120.0)/ 60.0;
+        return color;
+    };
+    if (ngrad <= 240.0) {
+        color.r = 0.0; color.b = 1.0; color.g = (240.0 -ngrad)/ 60.0;
+        return color;
+    };
+    if (ngrad <= 300.0) {
+        color.g = 0.0; color.b = 1.0; color.r = (ngrad - 240.0)/ 60.0;
+        return color;
+    };
+    if (ngrad <= 360.0) {
+        color.g = 0.0; color.r = 1.0; color.b = (360.0 - ngrad)/ 60.0;
+        return color;
+    };
+    color = vec4 (1.0,1.0,1.0,1.0);
+    return color;
+}
+
+vec4 color4 (float mand) {
+    vec4 color = vec4 (0.0,0.0,0.0,1.0);
+    if (mand <= -2.0) {
+        return vec4 (0.05,0.05,0.05,1.0);
+    };
+    if (mand <= -1.0) {
+        return vec4 (0.0,0.,0.0,1.0);
+    };
+    color = rad2rgb(mand*30.0);
+    return color;
+}
+
+vec4 color3 (float mand) {
+    vec4 color = vec4 (0.0,0.0,0.0,1.0);
+    color = vec4 (0.0,0.0,0.0,1.0);
+    color.r = min(1.0, log2(max(1.0,mand))/log2(float(u_max_iter)));
+        // color.g = min(1.0, log2(max(1.0,mand2-10.0))/log2(16.0));
+        // color.r = abs(color.r - color.g);
+        // color.b = min(1.0, log2(max(1.0,mand2-20.0))/log2(16.0));
+        // color.g = abs(color.g - color.b);
+        // color.r = abs(color.r - color.b);
+        // if (mand2 < 250.0) { color.r = mand2/256.0 ; }
+        // else if (mand2 < 500.0) { color.r= 1.0; color.g = (mand2-250.0) /256.0 ; }
+        // else if (mand2 < 750.0) { color.r= 1.0; color.g = 1.0; color.b = (mand2-500.0) /256.0 ; }
+        // else { color = vec4 (0.0,0.0,0.0,1.0); };
+    return color;
+}
+
+vec4 color2 (float mand) {
+    vec4 color = vec4 (0.0,0.0,0.0,1.0);
+    color = vec4 (0.0,0.0,0.0,1.0);
+    color.r = min(1.0, log2(mand)/4.0);
+    if (color.r == 1.0) { 
+        color.g = min(1.0, log2(mand/10.0)/4.0);
+        color.r = abs(color.r - color.g);
+    };
+    if (color.g == 1.0) { 
+        color.b = min(1.0, log2(mand/20.0)/4.0);
+    };
+    return color;
+}
+
+vec4 color1 (float mand) {
+    vec4 color = vec4 (0.0,0.0,0.0,1.0);
+    color = vec4 (0.0,0.0,0.0,1.0);
+    color.r = min(1.0, log2(mand)/4.0); // (u_max_iter));
+    return color;
+}
+
+    void main()	{
+        vec4 color = vec4( u_color );
+        float mand2;
+        mand2=mandel2(v_position.x, v_position.y);
+        outColor = color4(mand2);
+    }
+`;
+
+    var center = [-0.75, 0.0];
+    var skalierung = [2.0, 2.0];
+    var max_iter = 20;
+
+    var pointer = {
+        x: innerWidth / 2,
+        y: innerHeight / 2,
+        id: "",
+        type: "",
+        prim: ""
+    };
+
+    function downhandler(e) {
+        pointer.x = e.clientX;
+        pointer.y = e.clientY;
+        pointer.id = e.pointerId;
+        pointer.type = e.pointerType;
+        pointer.prim = e.isPrimary;
+        center[0] = center[0] + 2 * skalierung[0] * (pointer.x / innerWidth - 0.5);
+        center[1] = center[1] - 2 * skalierung[1] * (pointer.y / innerHeight - 0.5);
+        main();
+        // console.log("down");
+    };
+
+    function onwheelhandler(e) {
+        // console.log("onwheel", e.deltaX, e.deltaY, e.deltaZ) // +-500, +- 125, +-0
+        e.preventDefault();
+
+        if (e.deltaX < 0) {
+            max_iter = Math.max(Math.trunc(max_iter * 0.8 - 1), 1);
+            main();
+            return;
+        };
+        if (e.deltaX > 0) {
+            max_iter = Math.min(Math.trunc(max_iter / 0.8 + 1), 99999);
+            main();
+            return;
+        };
+
+        if (e.deltaY < 0) {
+            skalierung[0] = skalierung[0] * 2;
+            skalierung[1] = skalierung[1] * 2;
+        }
+        else if (e.deltaY > 0) {
+            skalierung[0] = skalierung[0] / 2;
+            skalierung[1] = skalierung[1] / 2;
+        };
+        // center[0] = center[0] + 2 * skalierung[0] * (pointer.x / innerWidth - 0.5);
+        // center[1] = center[1] - 2 * skalierung[1] * (pointer.y / innerHeight - 0.5);
+        main();
+    }
+
+
+    function main() {
+        // Get A WebGL context
+        /** @type {HTMLCanvasElement} */
+        var canvas = document.querySelector("#canvas");
+        var gl = canvas.getContext("webgl2");
+        if (!gl) {
+            return;
+        };
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // canvas.onpointermove = movehandler;
+        canvas.onpointerdown = downhandler;
+        canvas.onwheel = onwheelhandler;
+
+        webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+        // Tell WebGL how to convert from clip space to pixels
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        // Clear the canvas
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // Use our boilerplate utils to compile the shaders and link into a program
+        var program = webglUtils.createProgramFromSources(gl,
+            [vertexShaderSource, fragmentShaderSource2]);
+        // Tell it to use our program (pair of shaders)
+        gl.useProgram(program);
+
+
+        // look up where the vertex data needs to go.
+        var positionALoc = gl.getAttribLocation(program, "a_position");
+
+        // look up uniform locations
+        var colorULoc = gl.getUniformLocation(program, "u_color");
+        var resolutionULoc = gl.getUniformLocation(program, "u_resolution");
+        var centerULoc = gl.getUniformLocation(program, "u_center");
+        var skalierungULoc = gl.getUniformLocation(program, "u_skalierung");
+        var max_iterULoc = gl.getUniformLocation(program, "u_max_iter");
+
+        // Create a buffer
+        var positionBuffer = gl.createBuffer();
+
+        // Create a vertex array object (attribute state)
+        var vao = gl.createVertexArray();
+
+        // and make it the one we're currently working with
+        gl.bindVertexArray(vao);
+
+        // Turn on the attribute
+        gl.enableVertexAttribArray(positionALoc);
+
+        // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+        // Tell the attribute how to get data out of positionBuffer (ARRAY_BUFFER)
+        var size = 2;          // 2 components per iteration
+        var type = gl.FLOAT;   // the data is 32bit floats
+        var normalize = false; // don't normalize the data
+        var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+        var offset = 0;        // start at the beginning of the buffer
+        gl.vertexAttribPointer(
+            positionALoc, size, type, normalize, stride, offset);
+
+        // First let's make some variables
+        // to hold the translation, width and height of the rectangle
+        var translation = [0, 0];
+        var width = canvas.width;
+        var height = canvas.height;
+        var color = [Math.random(), Math.random(), Math.random(), 1];
+
+
+
+        // Bind the attribute/buffer set we want.
+        gl.bindVertexArray(vao);
+
+        // Pass in the Uniforms
+
+        gl.uniform4fv(colorULoc, color);
+        gl.uniform2f(resolutionULoc, gl.canvas.width, gl.canvas.height);
+        gl.uniform2fv(centerULoc, center);
+        gl.uniform2fv(skalierungULoc, skalierung);
+        gl.uniform1i(max_iterULoc, max_iter);
+
+
+        // Update the position buffer with rectangle positions
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        setRectangle(gl, translation[0], translation[1], width, height);
+
+
+        // Draw the rectangle.
+        var primitiveType = gl.TRIANGLES;
+        var offset = 0;
+        var count = 6;
+
+        gl.drawArrays(primitiveType, offset, count);
+    }
+
+    // Fill the buffer with the values that define a rectangle.
+
+    function setRectangle(gl, x, y, width, height) {
+        var x1 = x;
+        var x2 = x + width;
+        var y1 = y;
+        var y2 = y + height;
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            x1, y1,
+            x2, y1,
+            x1, y2,
+            x1, y2,
+            x2, y1,
+            x2, y2,
+        ]), gl.STATIC_DRAW);
+    };
+
+
+    main();
+</script>
+
+</html>
