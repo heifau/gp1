@@ -1,4 +1,3 @@
-<!-- Licensed under a BSD license. See license.html for license -->
 <!DOCTYPE html>
 <html>
 
@@ -218,121 +217,76 @@ vec4 color1 (float mand) {
         prim: ""
     };
 
+    const pointermap = new Map();
+
     // Event caches, one per touch target
     var evCache1 = new Array();
     var prevDiff = -1;
 
-    function mousedownhandler(e) {
-        pointer.x = e.clientX;
-        pointer.y = e.clientY;
-        pointer.id = e.pointerId;
-        pointer.type = e.pointerType;
-        pointer.prim = e.isPrimary;
-        center[0] = center[0] + 2 * skalierung[0] * (pointer.x / innerWidth - 0.5);
-        center[1] = center[1] - 2 * skalierung[1] * (pointer.y / innerHeight - 0.5);
-        main();
-        // console.log("down");
-    };
-
 
     function downhandler(ev) {
-        if (ev.pointerType == "mouse") {
-            mousedownhandler(ev);
-        } else {
-            push_event(ev);
-            // mousedownhandler(ev);
-        }
-    }
-
-    function movehandler(ev) {
-        if (ev.pointerType == "mouse") {
-            // NOP
-        } else {
-            let evCache = get_cache(ev);
-            ev.target.style.border = "dashed";
-            // Find this event in the cache and update its record with this event
-            for (var i = 0; i < evCache.length; i++) {
-                if (ev.pointerId == evCache[i].pointerId) {
-                    evCache[i] = ev;
-                    break;
-                }
-            }
-            // If two pointers are down, check for pinch gestures
-            if (evCache.length == 1) {
-                pointer.x = ev.clientX;
-                pointer.y = ev.clientY;
-                pointer.id = ev.pointerId;
-                pointer.type = ev.pointerType;
-                pointer.prim = ev.isPrimary;
-                center[0] = center[0] + 2 * skalierung[0] * (pointer.x / innerWidth - 0.5);
-                center[1] = center[1] - 2 * skalierung[1] * (pointer.y / innerHeight - 0.5);
-                main();
-            } else if (evCache.length == 2) {
-                // Calculate the distance between the two pointers
-                let curDiffx = evCache[0].clientX - evCache[1].clientX;
-                let curDiffy = evCache[0].clientY - evCache[1].clientY;
-                let curDiff = Math.sqrt(curDiffx * curDiffx + curDiffy * curDiffy);
-                let chDiff = curDiff - prevDiff;
-                if (prevDiff > 0) {
-                    skalierung[0] = skalierung[0] - 0.01 * chDiff;
-                    skalierung[1] = skalierung[1] - 0.01 * chDiff;
-                    main();
-                }
-                // Cache the distance for the next move event
-                prevDiff = curDiff;
-            };
-            // main();
-        }
-    }
-
-    function uphandler(ev) {
-        // Remove this touch point from the cache and reset the target's
-        // background and border
-
-        if (ev.pointerType == "mouse") {
-            // Nop;
-        } else {
-
-            remove_event(ev);
-            ev.target.style.border = "1px solid black";
-
-            // If the number of pointers down is less than two then reset diff tracker
-            if (evCache1.length < 2) {
-                prevDiff = -1;
-            };
-            pointer.x = e.clientX;
-            pointer.y = e.clientY;
-            pointer.id = e.pointerId;
-            pointer.type = e.pointerType;
-            pointer.prim = e.isPrimary;
-            center[0] = center[0] + 2 * skalierung[0] * (pointer.x / innerWidth - 0.5);
-            center[1] = center[1] - 2 * skalierung[1] * (pointer.y / innerHeight - 0.5);
+        pointermap.set(ev.pointerId, ev);
+        if (pointermap.size >= 5) {
+            center = [-0.75, 0.0];
+            skalierung = [2.0, 2.0];
+            max_iter = 20;
             main();
         }
     }
 
-    function get_cache(ev) {
-        // Return the cache for this event's target element
-        return evCache1;
+    function movehandler(ev) {
+        if (!pointermap.has(ev.pointerId)) return; // NOP
+        let prev = pointermap.get(ev.pointerId);
+        // ev.target.style.border = "dashed";
+        pointermap.set(ev.pointerId, ev);
+
+        if (pointermap.size === 1) {
+            center[0] = center[0] + 2 * skalierung[0] * (prev.clientX - ev.clientX) / innerWidth;
+            center[1] = center[1] - 2 * skalierung[1] * (prev.clientY - ev.clientY) / innerHeight;
+            main();
+        } else if (pointermap.size === 2) {
+            let otherId;
+            let otherX = innerWidth / 2;
+            let otherY = innerHeight / 2;
+            for (let key of pointermap.keys()) {
+                if (key !== ev.pointerId) {
+                    otherId = key;
+                    otherX = pointermap.get(key).clientX;
+                    otherY = pointermap.get(key).clientY;
+                };
+            };
+            let otherCX = skalierung[0] * (otherX / innerWidth - 0.5);
+            let otherCY = skalierung[1] * (otherY / innerHeight - 0.5);
+            let curDiffy = prev.clientY - ev.clientY;
+            // let curDiff = Math.sqrt(curDiffx * curDiffx + curDiffy * curDiffy);
+            skalierung[0] = skalierung[0] * (prev.clientX - otherX) / (ev.clientX - otherX);
+            skalierung[1] = skalierung[1] * (prev.clientY - otherY) / (ev.clientY - otherY);
+            center[0] = center[0] + 2 * (otherCX - skalierung[0] * (otherX / innerWidth - 0.5));
+            center[1] = center[1] - 2 * (otherCY - skalierung[1] * (otherY / innerHeight - 0.5));
+            main();
+        } else if (pointermap.size === 3) {
+            let dX = (ev.clientX - prev.clientX) / innerWidth;
+            if (dX < 0) {
+                max_iter = Math.max(Math.trunc(max_iter * (1 + dX * 0.2) - 1), 2);
+            } else if (dX > 0) {
+                max_iter = Math.min(Math.trunc(max_iter * (1 + dX * 0.2) + 1), 99999);
+            };
+            main();
+        } else if (pointermap.size === 4) {
+        } else if (pointermap.size >= 5) {
+            center = [-0.75, 0.0];
+            skalierung = [2.0, 2.0];
+            max_iter = 20;
+            main();
+        };
     }
 
 
-    function push_event(ev) {
-        // Save this event in the target's cache
-        var cache = get_cache(ev);
-        cache.push(ev);
+
+    function uphandler(ev) {
+        pointermap.delete(ev.pointerId);
     }
 
-    function remove_event(ev) {
-        // Remove this event from the target's cache
-        var cache = get_cache(ev);
-        for (var i = 0; i < cache.length; i++) {
-            if (cache[i].pointerId == ev.pointerId) {
-                cache.splice(i, 1);
-                break;
-            }
-        }
-    }
 
 
     function onwheelhandler(e) {
