@@ -21,10 +21,21 @@
         padding: 0;
         background-color: rgba(200, 75, 99, 0.384);
     }
+
+    #Zeile1 {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        background-color: rgba(0, 0, 0, 0.2);
+        color: rgba(220, 220, 220, 1);
+    }
 </style>
 
 <body>
+
     <canvas id="canvas"></canvas>
+    <div id="Zeile1"></div>
+
 </body>
 <!--
 See https://webgl2fundamentals.org/webgl/lessons/webgl-boilerplate.html
@@ -209,20 +220,9 @@ vec4 color1 (float mand) {
     var skalierung = [2.0, 2.0];
     var max_iter = 20;
 
-    var pointer = {
-        x: innerWidth / 2,
-        y: innerHeight / 2,
-        id: "",
-        type: "",
-        prim: ""
-    };
+    var mainCounter = 0;
 
     const pointermap = new Map();
-
-    // Event caches, one per touch target
-    var evCache1 = new Array();
-    var prevDiff = -1;
-
 
     function downhandler(ev) {
         pointermap.set(ev.pointerId, ev);
@@ -237,7 +237,8 @@ vec4 color1 (float mand) {
     function movehandler(ev) {
         if (!pointermap.has(ev.pointerId)) return; // NOP
         let prev = pointermap.get(ev.pointerId);
-        // ev.target.style.border = "dashed";
+        if ((Math.abs(prev.clientX - ev.clientX) + Math.abs(prev.clientY - ev.clientY))
+            <= (innerWidth / 100 + innerHeight / 100)) return;
         pointermap.set(ev.pointerId, ev);
 
         if (pointermap.size === 1) {
@@ -258,21 +259,28 @@ vec4 color1 (float mand) {
             let otherCX = skalierung[0] * (otherX / innerWidth - 0.5);
             let otherCY = skalierung[1] * (otherY / innerHeight - 0.5);
             let curDiffy = prev.clientY - ev.clientY;
-            // let curDiff = Math.sqrt(curDiffx * curDiffx + curDiffy * curDiffy);
-            skalierung[0] = skalierung[0] * (prev.clientX - otherX) / (ev.clientX - otherX);
-            skalierung[1] = skalierung[1] * (prev.clientY - otherY) / (ev.clientY - otherY);
+            if (Math.abs(ev.clientX - otherX) >= 5)
+                skalierung[0] = skalierung[0] * (prev.clientX - otherX) / (ev.clientX - otherX);
+            if (Math.abs(ev.clientY - otherY) >= 5)
+                skalierung[1] = skalierung[1] * (prev.clientY - otherY) / (ev.clientY - otherY);
             center[0] = center[0] + 2 * (otherCX - skalierung[0] * (otherX / innerWidth - 0.5));
             center[1] = center[1] - 2 * (otherCY - skalierung[1] * (otherY / innerHeight - 0.5));
             main();
         } else if (pointermap.size === 3) {
             let dX = (ev.clientX - prev.clientX) / innerWidth;
             if (dX < 0) {
-                max_iter = Math.max(Math.trunc(max_iter * (1 + dX * 0.2) - 1), 2);
+                max_iter = Math.max(Math.trunc(max_iter * (1 + dX * 2) - 1), 2);
             } else if (dX > 0) {
-                max_iter = Math.min(Math.trunc(max_iter * (1 + dX * 0.2) + 1), 99999);
+                max_iter = Math.min(Math.trunc(max_iter * (1 + dX * 2) + 1), 99999);
             };
             main();
         } else if (pointermap.size === 4) {
+            let Zeile1 = document.querySelector("#Zeile1");
+            if (Zeile1.style.display === "none") {
+                Zeile1.style.display = "block";
+            } else {
+                Zeile1.style.display = "none";
+            }
         } else if (pointermap.size >= 5) {
             center = [-0.75, 0.0];
             skalierung = [2.0, 2.0];
@@ -281,20 +289,16 @@ vec4 color1 (float mand) {
         };
     }
 
-
-
     function uphandler(ev) {
         pointermap.delete(ev.pointerId);
     }
-
-
 
     function onwheelhandler(e) {
         // console.log("onwheel", e.deltaX, e.deltaY, e.deltaZ) // +-500, +- 125, +-0
         e.preventDefault();
 
         if (e.deltaX < 0) {
-            max_iter = Math.max(Math.trunc(max_iter * 0.8 - 1), 1);
+            max_iter = Math.max(Math.trunc(max_iter * 0.8 - 1), 2);
             main();
             return;
         };
@@ -326,6 +330,7 @@ vec4 color1 (float mand) {
         if (!gl) {
             return;
         };
+        mainCounter += 1;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
@@ -416,6 +421,18 @@ vec4 color1 (float mand) {
         var count = 6;
 
         gl.drawArrays(primitiveType, offset, count);
+
+        var Zeile1Element = document.querySelector("#Zeile1");
+        Zeile1Element.innerHTML =
+            "&nbsp;" +
+            mainCounter.toFixed() + " " +
+            center[0].toFixed(6) + " " +
+            center[1].toFixed(6) + " " +
+            skalierung[0].toFixed(6) + " " +
+            skalierung[1].toFixed(6) + " " +
+            max_iter + " " +
+            "&nbsp;"
+            ;
     }
 
     // Fill the buffer with the values that define a rectangle.
