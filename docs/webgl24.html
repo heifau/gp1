@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <!--  cd /D C:\Users\heinz\OneDrive\Dokumente\GitHub\gp1\docs -->
 <!--  node static -->
-<html>
+<html lang="de">
 
 <head>
     <meta charset="utf-8">
+    <meta name="Description" content="Mandelbrot mit Maus und Touch Interface">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>WebGL2 - 2D</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=1" />
@@ -24,56 +25,57 @@
         background-color: rgba(200, 75, 99, 0.384);
     }
 
-    #Zeile1 {
+    #Container1 {
         position: absolute;
         left: 10px;
         top: 10px;
         background-color: rgba(0, 0, 0, 0.2);
         color: rgba(220, 220, 220, 1);
     }
+
+    input[type=range] {
+        width: 95%;
+    }
 </style>
 
 <body>
 
     <canvas id="canvas"></canvas>
-    <div id="Zeile1"></div>
-
+    <div class="container" id="Container1">
+        <div id="Zeile1"></div>
+        <br />
+        max_iter: <input type="range" oninput="onInMax_iter(this.value)">
+        <br />
+        Color: <input type="range" oninput="onInColor(this.value)">
+        <br />
+    </div>
 </body>
 
 <script src="webgl-utils.js"></script>
+<noscript>
+    Diese Webseite braucht einen Browser mit Javascript und Webgl2
+</noscript>
 <script>
     "use strict";
 
     var vertexShaderSource = `#version 300 es
 
 precision highp float;
-// an attribute is an input (in) to a vertex shader.
-// It will receive data from a buffer
+
 in vec2 a_position; // pixel, z.B. 0 .. 500
 out vec2 v_position; // re/im, ca. -4 .. +4
 
-uniform vec4 u_color;
+uniform float u_color;
 uniform vec2 u_resolution;
 uniform vec2 u_center;
 uniform vec2 u_skalierung;
 uniform int u_max_iter;
 
 
-// all shaders have a main function
 void main() {
-
-  // convert the position from pixels to 0.0 to 1.0
-  vec2 zeroToOne = a_position / u_resolution;
-  v_position= a_position;
-
-  // convert from 0->1 to 0->2
-  vec2 zeroToTwo = zeroToOne * 2.0;
-
-  // convert from 0->2 to -1->+1 (clipspace)
-  vec2 clipSpace = zeroToTwo - 1.0;
+  vec2 clipSpace = a_position / u_resolution * 2.0 - 1.0;
   v_position= vec2( u_skalierung.x*clipSpace.x+u_center.x, 
                     u_skalierung.y*clipSpace.y+u_center.y); 
-
   gl_Position = vec4(clipSpace.x, clipSpace.y, 0, 1);
 }
 `;
@@ -81,16 +83,14 @@ void main() {
 precision highp float;
 precision highp int;
 
-uniform vec4 u_color;
+uniform float u_color;
 uniform vec2 u_resolution;
 uniform vec2 u_center;
 uniform vec2 u_skalierung;
 uniform int u_max_iter;
 
-
 in vec2 v_position;
 out vec4 outColor; 
-
 
 float mandel2 (float re, float im) {
     float x = 0.0;
@@ -166,49 +166,11 @@ vec4 color4 (float mand) {
     if (mand <= -1.0) {
         return vec4 (0.0,0.,0.0,1.0);
     };
-    color = rad2rgb(mand*float(u_color.r)); // typ: u_color.r=30
-    return color;
-}
-
-vec4 color3 (float mand) {
-    vec4 color = vec4 (0.0,0.0,0.0,1.0);
-    color = vec4 (0.0,0.0,0.0,1.0);
-    color.r = min(1.0, log2(max(1.0,mand))/log2(float(u_max_iter)));
-        // color.g = min(1.0, log2(max(1.0,mand2-10.0))/log2(16.0));
-        // color.r = abs(color.r - color.g);
-        // color.b = min(1.0, log2(max(1.0,mand2-20.0))/log2(16.0));
-        // color.g = abs(color.g - color.b);
-        // color.r = abs(color.r - color.b);
-        // if (mand2 < 250.0) { color.r = mand2/256.0 ; }
-        // else if (mand2 < 500.0) { color.r= 1.0; color.g = (mand2-250.0) /256.0 ; }
-        // else if (mand2 < 750.0) { color.r= 1.0; color.g = 1.0; color.b = (mand2-500.0) /256.0 ; }
-        // else { color = vec4 (0.0,0.0,0.0,1.0); };
-    return color;
-}
-
-vec4 color2 (float mand) {
-    vec4 color = vec4 (0.0,0.0,0.0,1.0);
-    color = vec4 (0.0,0.0,0.0,1.0);
-    color.r = min(1.0, log2(mand)/4.0);
-    if (color.r == 1.0) { 
-        color.g = min(1.0, log2(mand/10.0)/4.0);
-        color.r = abs(color.r - color.g);
-    };
-    if (color.g == 1.0) { 
-        color.b = min(1.0, log2(mand/20.0)/4.0);
-    };
-    return color;
-}
-
-vec4 color1 (float mand) {
-    vec4 color = vec4 (0.0,0.0,0.0,1.0);
-    color = vec4 (0.0,0.0,0.0,1.0);
-    color.r = min(1.0, log2(mand)/4.0); // (u_max_iter));
+    color = rad2rgb(mand*u_color);
     return color;
 }
 
     void main()	{
-        vec4 color = vec4( u_color );
         float mand2;
         mand2=mandel2(v_position.x, v_position.y);
         outColor = color4(mand2);
@@ -218,7 +180,7 @@ vec4 color1 (float mand) {
     var center = [-0.75, 0.0];
     var skalierung = [2.0, 2.0];
     var max_iter = 20;
-    var color = [2, 0, 0, 1];
+    var color = 2.0;
 
     var mainCounter = 0;
 
@@ -226,24 +188,43 @@ vec4 color1 (float mand) {
 
     function downhandler(ev) {
         pointermap.set(ev.pointerId, ev);
-        if (pointermap.size >= 5) {
+        if (pointermap.size >= 4) {
+            let Container1 = document.querySelector("#Container1");
+            Container1.style.display = "block";
             center = [-0.75, 0.0];
             skalierung = [2.0, 2.0];
             max_iter = 20;
+            color = 2.0;
             main();
         }
     }
 
+    function onInMax_iter(val) {
+        let nval = Number(val);
+        max_iter = (1 + nval + Math.trunc(Math.exp(nval / 11)));
+        // console.log("onInS1", val, max_iter)
+        main();
+    }
+
+    function onInColor(val) {
+        let nval = Number(val);
+        color = Math.exp((nval - 50) / 20.0);
+        main();
+    }
+
+
     function movehandler(ev) {
         if (!pointermap.has(ev.pointerId)) return; // NOP
         let prev = pointermap.get(ev.pointerId);
-        if ((Math.abs(prev.clientX - ev.clientX) + Math.abs(prev.clientY - ev.clientY))
+        let dX = prev.clientX - ev.clientX;
+        let dY = prev.clientY - ev.clientY;
+        if ((Math.abs(dX) + Math.abs(dY))
             <= (innerWidth / 100 + innerHeight / 100)) return;
         pointermap.set(ev.pointerId, ev);
 
         if (pointermap.size === 1) {
-            center[0] = center[0] + 2 * skalierung[0] * (prev.clientX - ev.clientX) / innerWidth;
-            center[1] = center[1] - 2 * skalierung[1] * (prev.clientY - ev.clientY) / innerHeight;
+            center[0] = center[0] + 2 * skalierung[0] * dX / innerWidth;
+            center[1] = center[1] - 2 * skalierung[1] * dY / innerHeight;
             main();
         } else if (pointermap.size === 2) {
             let otherId;
@@ -258,7 +239,6 @@ vec4 color1 (float mand) {
             };
             let otherCX = skalierung[0] * (otherX / innerWidth - 0.5);
             let otherCY = skalierung[1] * (otherY / innerHeight - 0.5);
-            let curDiffy = prev.clientY - ev.clientY;
             if (Math.abs(ev.clientX - otherX) >= 5)
                 skalierung[0] = skalierung[0] * (prev.clientX - otherX) / (ev.clientX - otherX);
             if (Math.abs(ev.clientY - otherY) >= 5)
@@ -267,30 +247,21 @@ vec4 color1 (float mand) {
             center[1] = center[1] - 2 * (otherCY - skalierung[1] * (otherY / innerHeight - 0.5));
             main();
         } else if (pointermap.size === 3) {
-            let dX = (ev.clientX - prev.clientX) / innerWidth;
-            let dY = (ev.clientY - prev.clientY) / innerHeight;
-            if (dX < -0.01) {
-                max_iter = Math.max(Math.trunc(max_iter * (1 + dX * 2) - 1), 2);
-            } else if (dX > 0.01) {
-                max_iter = Math.min(Math.trunc(max_iter * (1 + dX * 2) + 1), 99999);
-            };
-            if (dY < -0.01) {
-                color[0] = Math.max(1, color[0] / 1.2 - 1);
-            } else if (dY > 0.01) {
-                color[0] = Math.min(255, color[0] * 1.2 + 1);
-            };
-            main();
-        } else if (pointermap.size === 4) {
-            let Zeile1 = document.querySelector("#Zeile1");
-            if (Zeile1.style.display === "none") {
-                Zeile1.style.display = "block";
+            let Container1 = document.querySelector("#Container1");
+            if (dX >= 0) {
+                Container1.style.display = "none";
             } else {
-                Zeile1.style.display = "none";
-            }
-        } else if (pointermap.size >= 5) {
+                Container1.style.display = "block";
+            };
+
+            main();
+        } else if (pointermap.size >= 4) {
+            let Container1 = document.querySelector("#Container1");
+            Container1.style.display = "block";
             center = [-0.75, 0.0];
             skalierung = [2.0, 2.0];
             max_iter = 20;
+            color = 2.0;
             main();
         };
     }
@@ -302,14 +273,16 @@ vec4 color1 (float mand) {
     function onwheelhandler(e) {
         // console.log("onwheel", e.deltaX, e.deltaY, e.deltaZ) // +-500, +- 125, +-0
         e.preventDefault();
-
+        let Container1 = document.querySelector("#Container1");
         if (e.deltaX < 0) {
-            max_iter = Math.max(Math.trunc(max_iter * 0.8 - 1), 2);
+            // max_iter = Math.max(Math.trunc(max_iter * 0.8 - 1), 2);
+            Container1.style.display = "none"
             main();
             return;
         };
         if (e.deltaX > 0) {
-            max_iter = Math.min(Math.trunc(max_iter / 0.8 + 1), 99999);
+            // max_iter = Math.min(Math.trunc(max_iter / 0.8 + 1), 99999);
+            Container1.style.display = "block"
             main();
             return;
         };
@@ -411,7 +384,7 @@ vec4 color1 (float mand) {
 
         // Pass in the Uniforms
 
-        gl.uniform4fv(colorULoc, color);
+        gl.uniform1f(colorULoc, color);
         gl.uniform2f(resolutionULoc, gl.canvas.width, gl.canvas.height);
         gl.uniform2fv(centerULoc, center);
         gl.uniform2fv(skalierungULoc, skalierung);
@@ -439,8 +412,8 @@ vec4 color1 (float mand) {
             skalierung[0].toFixed(6) + " " +
             skalierung[1].toFixed(6) + " " +
             max_iter + " " +
-            color[0].toFixed(1) + " "
-            "&nbsp;"
+            color.toFixed(2) + " "
+        "&nbsp;"
             ;
     }
 
